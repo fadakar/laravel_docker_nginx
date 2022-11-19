@@ -35,62 +35,44 @@ RUN docker-php-ext-install \
     intl \
     gmp
 
-#####################################
 # PHPRedis:
-#####################################
 # RUN pecl install redis && docker-php-ext-enable redis
 
-#####################################
 # Imagick:
-#####################################
-
 # RUN pecl install imagick && \
     # docker-php-ext-enable imagick
 
-#####################################
 # GD:
-#####################################
-
 # Install the PHP gd library
 # RUN docker-php-ext-install gd && \
     # docker-php-ext-configure gd --with-freetype --with-jpeg && \
     # docker-php-ext-install gd
 
-#####################################
 # xDebug:
-#####################################
-
 # Install the xdebug extension
 # RUN pecl install xdebug
 
-#####################################
 # PHP Memcached:
-#####################################
-
 # Install the php memcached extension
 # RUN pecl install memcached && docker-php-ext-enable memcached
 
-#####################################
 # Composer:
-#####################################
-
 # Install composer and add its bin to the PATH.
-RUN curl -s http://getcomposer.org/installer | php && \
-    echo "export PATH=${PATH}:/var/www/vendor/bin" >> ~/.bashrc && \
-    mv composer.phar /usr/local/bin/composer
-# Source the bash
-RUN . ~/.bashrc
+# RUN curl -s http://getcomposer.org/installer | php && \
+#     echo "export PATH=${PATH}:/var/www/vendor/bin" >> ~/.bashrc && \
+#     mv composer.phar /usr/local/bin/composer
+# # Source the bash
+# RUN . ~/.bashrc
 
-#####################################
+COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
+
 # Laravel Schedule Cron Job:
-#####################################
-
 RUN echo "* * * * * www-data /usr/local/bin/php /var/www/artisan schedule:run >> /dev/null 2>&1"  >> /etc/cron.d/laravel-scheduler
 RUN chmod 0644 /etc/cron.d/laravel-scheduler
 
 #
 #--------------------------------------------------------------------------
-# Final Touch
+# init 
 #--------------------------------------------------------------------------
 #
 
@@ -102,10 +84,6 @@ RUN usermod -u 1000 www-data
 
 WORKDIR /var/www
 
-COPY ./docker-entrypoint.sh /usr/local/bin/
-RUN chmod +x /usr/local/bin/docker-entrypoint.sh
-RUN ln -s /usr/local/bin/docker-entrypoint.sh /
-ENTRYPOINT ["docker-entrypoint.sh"]
-
 EXPOSE 9000
+
 CMD ["php-fpm"]
