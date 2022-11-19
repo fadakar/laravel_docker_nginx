@@ -5,33 +5,58 @@ services:
     build: 
       context: .docker/nginx
       dockerfile: Dockerfile
-    restart: unless-stopped
+    # restart: unless-stopped
     tty: true
     ports:
       - "80:80"
-      - "443:443"
     volumes:
-      - ./:/var/www/html
+      - ./:/var/www
     networks:
-      - app-network
+      - app
+      - php
     depends_on:
-      - php-fpm
+      - php
+      - db
 
-  php-fpm:
+  php:
     build:
       context: .docker/php
       dockerfile: Dockerfile
     restart: unless-stopped
     tty: true
     volumes:
-      - ./:/var/www/html
+      - ./:/var/www
     networks:
-      - app-network
+      - php
+      - db
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_USERNAME=root
+      - DB_PASSWORD=password
+      - DB_DATABASE=app_db
 
+  db:
+      image: mysql:8.0.30
+      restart: always
+      environment:
+        MYSQL_ROOT_PASSWORD: password
+        MYSQL_USER: fadakar
+        MYSQL_PASSWORD: fadakar
+        MYSQL_DATABASE: app_db
+      volumes:
+        - my-db:/var/lib/mysql
+      networks: 
+        - db
+
+
+# Names our volume
 volumes:
-  mysqldata:
+  my-db:
     driver: local
 
 networks:
-  app-network:
+  app:
     driver: bridge
+  php:
+  db:

@@ -1,61 +1,111 @@
-FROM php:8.1-fpm-alpine
+FROM php:8.1-fpm
 
-RUN apk add --no-cache --virtual .build-deps \
-        $PHPIZE_DEPS \
-        curl-dev \
-        imagemagick-dev \
-        freetype-dev  \
-        gmp-dev \
-        libtool \
-        libxml2-dev \
-        postgresql-dev \
-        sqlite-dev \
-        libpng-dev \
-        libmcrypt-dev \
-        libjpeg-turbo-dev \
-    && apk add --no-cache \
-        bash \
-        curl \
-        git \
-        imagemagick \
-        mysql-client \
-        openssh-client \
-        postgresql-libs \
-        libintl \
-        icu \
-        icu-dev \
-        nodejs \
-        yarn \
+ENV COMPOSER_MEMORY_LIMIT='-1'
+
+RUN apt-get update && \
+    apt-get install -y --force-yes --no-install-recommends \
+        libmemcached-dev \
         libzip-dev \
-        rsync \
-        openldap-dev \
-        npm \
-    && apk add --no-cache --repository http://dl-cdn.alpinelinux.org/alpine/edge/community/ --allow-untrusted \
-        gnu-libiconv \
-    && pecl install imagick redis mongodb \
-    && docker-php-ext-enable imagick redis mongodb \
-    && docker-php-ext-configure exif \
-    && docker-php-ext-install \
-        bcmath \
-        exif \
-        gd \
-        gmp \
-        intl \
-        ldap \
-        mysqli \
-        pcntl \
-        pdo_mysql \
-        pdo_pgsql \
-        pdo_sqlite \
-        pgsql \
-        soap \
-        zip \
-        xml \
-    && apk add --no-cache libwebp-dev libpng-dev libjpeg-turbo-dev freetype-dev \
-    && docker-php-ext-configure gd --with-freetype --with-jpeg --with-webp \
-    && wget https://getcomposer.org/installer && cat installer | php -- --install-dir=/usr/local/bin/ --filename=composer \
-    && cat installer | php -- --1 --install-dir=/usr/local/bin/ --filename=composer1 \
-    && rm installer \
-    && apk del -f .build-deps
+        libz-dev \
+        libzip-dev \
+        libpq-dev \
+        libjpeg-dev \
+        libpng-dev \
+        libfreetype6-dev \
+        libssl-dev \
+        openssh-server \
+        libmagickwand-dev \
+        git \
+        cron \
+        nano \
+        libxml2-dev \
+        libreadline-dev \
+        libgmp-dev \
+        mariadb-client \
+        unzip
 
-WORKDIR /var/www/html
+# Install php extention
+RUN docker-php-ext-install \
+    soap \
+    exif \
+    pcntl \
+    zip \
+    pdo_mysql \
+    bcmath \
+    intl \
+    gmp
+
+#####################################
+# PHPRedis:
+#####################################
+# RUN pecl install redis && docker-php-ext-enable redis
+
+#####################################
+# Imagick:
+#####################################
+
+# RUN pecl install imagick && \
+    # docker-php-ext-enable imagick
+
+#####################################
+# GD:
+#####################################
+
+# Install the PHP gd library
+# RUN docker-php-ext-install gd && \
+    # docker-php-ext-configure gd --with-freetype --with-jpeg && \
+    # docker-php-ext-install gd
+
+#####################################
+# xDebug:
+#####################################
+
+# Install the xdebug extension
+# RUN pecl install xdebug
+
+#####################################
+# PHP Memcached:
+#####################################
+
+# Install the php memcached extension
+# RUN pecl install memcached && docker-php-ext-enable memcached
+
+#####################################
+# Composer:
+#####################################
+
+# Install composer and add its bin to the PATH.
+RUN curl -s http://getcomposer.org/installer | php && \
+    echo "export PATH=${PATH}:/var/www/vendor/bin" >> ~/.bashrc && \
+    mv composer.phar /usr/local/bin/composer
+# Source the bash
+RUN . ~/.bashrc
+
+#####################################
+# Laravel Schedule Cron Job:
+#####################################
+
+RUN echo "* * * * * www-data /usr/local/bin/php /var/www/artisan schedule:run >> /dev/null 2>&1"  >> /etc/cron.d/laravel-scheduler
+RUN chmod 0644 /etc/cron.d/laravel-scheduler
+
+#
+#--------------------------------------------------------------------------
+# Final Touch
+#--------------------------------------------------------------------------
+#
+
+ADD ./php.ini /usr/local/etc/php/conf.d
+
+RUN rm -r /var/lib/apt/lists/*
+
+RUN usermod -u 1000 www-data
+
+WORKDIR /var/www
+
+COPY ./docker-entrypoint.sh /usr/local/bin/
+RUN chmod +x /usr/local/bin/docker-entrypoint.sh
+RUN ln -s /usr/local/bin/docker-entrypoint.sh /
+ENTRYPOINT ["docker-entrypoint.sh"]
+
+EXPOSE 9000
+CMD ["php-fpm"]
