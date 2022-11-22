@@ -67,8 +67,8 @@ RUN docker-php-ext-install \
 COPY --from=composer:latest /usr/bin/composer /usr/local/bin/composer
 
 # Laravel Schedule Cron Job:
-RUN echo "* * * * * www-data /usr/local/bin/php /var/www/artisan schedule:run >> /dev/null 2>&1"  >> /etc/cron.d/laravel-scheduler
-RUN chmod 0644 /etc/cron.d/laravel-scheduler
+# RUN echo "* * * * * www-data /usr/local/bin/php /var/www/artisan schedule:run >> /dev/null 2>&1"  >> /etc/cron.d/laravel-scheduler
+# RUN chmod 0644 /etc/cron.d/laravel-scheduler
 
 #
 #--------------------------------------------------------------------------
@@ -79,8 +79,6 @@ RUN chmod 0644 /etc/cron.d/laravel-scheduler
 ADD ./php.ini /usr/local/etc/php/conf.d
 
 RUN rm -r /var/lib/apt/lists/*
-
-RUN usermod -u 1000 www-data
 
 WORKDIR /var/www
 
